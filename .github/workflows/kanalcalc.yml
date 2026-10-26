@@ -1,0 +1,53 @@
+name: KanalCalc
+
+on:
+  push:
+    paths:
+      - 'kanalski-proracun/**'
+      - '.github/workflows/kanalcalc.yml'
+  pull_request:
+    paths:
+      - 'kanalski-proracun/**'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: kanalski-proracun
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: kanalski-proracun/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: kanalski-proracun/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: 'kanalski-proracun/src-tauri -> target'
+      - run: npm ci
+      - run: npx tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KanalCalc-Windows
+          path: |
+            kanalski-proracun/src-tauri/target/release/bundle/nsis/*.exe
+            kanalski-proracun/src-tauri/target/release/kanalcalc.exe
+          if-no-files-found: error
