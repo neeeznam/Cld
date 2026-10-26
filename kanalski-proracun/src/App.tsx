@@ -29,6 +29,7 @@ function TopBar({ table, setTable }: { table: boolean; setTable: (v: boolean) =>
   const { t, P } = st;
   const fileRef = useRef<HTMLInputElement>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [ren, setRen] = useState<number | null>(null);
   const addSystem = (kind: SysKind) => {
     setAddOpen(false);
     const n = P.systems.length;
@@ -52,14 +53,29 @@ function TopBar({ table, setTable }: { table: boolean; setTable: (v: boolean) =>
             key={s.id}
             className={'systab ' + s.kind + (i === st.si ? ' on' : '')}
             onClick={() => st.setSi(i)}
-            onDoubleClick={() => {
-              const nm = prompt(t('rename'), s.name);
-              if (nm) st.editProject((p) => (p.systems[i].name = nm));
-            }}
-            title={t(s.kind)}
+            onDoubleClick={() => setRen(i)}
+            title={t(s.kind) + ' — ' + t('rename')}
           >
             <i className={'kind ' + s.kind}>{s.kind === 'supply' ? '→' : '←'}</i>
-            {s.name}
+            {ren === i ? (
+              <input
+                className="ren"
+                autoFocus
+                defaultValue={s.name}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                  if (e.key === 'Escape') setRen(null);
+                }}
+                onBlur={(e) => {
+                  const nm = e.target.value.trim();
+                  setRen(null);
+                  if (nm && nm !== s.name) st.editProject((p) => (p.systems[i].name = nm));
+                }}
+              />
+            ) : (
+              s.name
+            )}
           </button>
         ))}
         <div className="menu">
@@ -74,9 +90,9 @@ function TopBar({ table, setTable }: { table: boolean; setTable: (v: boolean) =>
                 <>
                   <hr />
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       setAddOpen(false);
-                      if (!confirm(t('delSystem') + '?')) return;
+                      if (!(await st.ask(t('delSystem') + ': ' + P.systems[st.si].name + '?'))) return;
                       const i = st.si;
                       st.editProject((p) => p.systems.splice(i, 1));
                       st.setSi(Math.max(0, i - 1));
@@ -100,10 +116,10 @@ function TopBar({ table, setTable }: { table: boolean; setTable: (v: boolean) =>
         <button className={'ib txt' + (table ? ' on' : '')} onClick={() => setTable(!table)}>
           {t('table')}
         </button>
-        <button className="ib txt" onClick={() => confirm(t('confirmNew')) && st.replace(emptyProject())}>
+        <button className="ib txt" onClick={async () => (await st.ask(t('confirmNew'))) && st.replace(emptyProject())}>
           {t('newProj')}
         </button>
-        <button className="ib txt" onClick={() => confirm(t('confirmNew')) && st.replace(sampleProject())}>
+        <button className="ib txt" onClick={async () => (await st.ask(t('confirmNew'))) && st.replace(sampleProject())}>
           {t('example')}
         </button>
         <button className="ib txt" onClick={() => fileRef.current?.click()}>
@@ -215,6 +231,21 @@ function Shell() {
         </aside>
       </div>
       {st.toast && <div className="toast">{st.toast}</div>}
+      {st.dialog && (
+        <div className="modal-bg" onClick={() => st.dialog?.done(false)}>
+          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <p>{st.dialog.msg}</p>
+            <div className="modal-f">
+              <button className="btn" onClick={() => st.dialog?.done(false)}>
+                {t('cancel')}
+              </button>
+              <button className="btn pri" autoFocus onClick={() => st.dialog?.done(true)}>
+                {t('ok')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

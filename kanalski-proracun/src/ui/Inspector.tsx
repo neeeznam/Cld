@@ -90,8 +90,8 @@ export function Inspector() {
   const run = r?.run ? R.runs[r.run] : null;
   const shape: Shape = r?.sec?.shape || (n.shape as Shape) || 'rect';
   const set = (k: string, v: number | string) => st.editNode(n.id, (x) => (x.p[k] = v), k);
-  const del = (sub: boolean) => {
-    if (sub && !confirm(t('confirmDel'))) return;
+  const del = async (sub: boolean) => {
+    if (sub && !(await st.ask(t('confirmDel')))) return;
     st.edit((s) => removeNode(s, n.id, sub));
     st.setSel(null);
   };

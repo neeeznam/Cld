@@ -52,6 +52,9 @@ export interface Store {
   undo(): void;
   redo(): void;
   notify(msg: string): void;
+  /** Potvrda unutar aplikacije (umjesto window.confirm). */
+  ask(msg: string): Promise<boolean>;
+  dialog: { msg: string; done: (ok: boolean) => void } | null;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -71,6 +74,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sel, setSel] = useState<string | null>(null);
   const [lang, setLangRaw] = useState<Lang>(() => (loadLS<Lang>(LS_LANG) === 'en' ? 'en' : 'sr'));
   const [toast, setToast] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<Store['dialog']>(null);
   const undoS = useRef<string[]>([]);
   const redoS = useRef<string[]>([]);
   const [, bump] = useState(0);
@@ -174,6 +178,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       bump((x) => x + 1);
     },
     notify,
+    dialog,
+    ask: (msg) =>
+      new Promise<boolean>((resolve) =>
+        setDialog({
+          msg,
+          done: (ok) => {
+            setDialog(null);
+            resolve(ok);
+          },
+        }),
+      ),
   };
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }
