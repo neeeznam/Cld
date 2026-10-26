@@ -4,7 +4,7 @@ import type { Node, Shape } from '../core/types';
 import { fitName, paramLabel, warnText, type Key } from '../i18n';
 import { removeNode } from '../state';
 import { useStore } from '../store';
-import { Icon } from './Icons';
+import { MiniShape } from './draw';
 import { fmtN, nodeKey, nodeTitle, portLabel } from './labels';
 
 function NumField({ label, unit, value, onChange, step, min }: { label: string; unit?: string; value: number | string | undefined; onChange: (v: number) => void; step?: number; min?: number }) {
@@ -81,6 +81,25 @@ function FittingFields({ n, shape }: { n: Node; shape: Shape }) {
   );
 }
 
+function Gauge({ label, value, max, unit, lang }: { label: string; value: number; max: number; unit: string; lang: 'sr' | 'en' }) {
+  const x = max > 0 ? value / max : 0;
+  const cls = x > 1.0001 ? 'v3' : x >= 0.8 ? 'v2' : x >= 0.5 ? 'v1' : 'v0';
+  return (
+    <div className="gauge">
+      <div className="gauge-l">
+        <span>{label}</span>
+        <b>
+          {fmtN(value, 2, lang)} / {fmtN(max, 2, lang)} {unit}
+        </b>
+      </div>
+      <div className="gauge-t">
+        <div className={'gauge-f ' + cls} style={{ width: Math.min(100, x * 80) + '%' }} />
+        <div className="gauge-m" style={{ left: '80%' }} />
+      </div>
+    </div>
+  );
+}
+
 export function Inspector() {
   const st = useStore();
   const { sys, R, t, lang, sel } = st;
@@ -100,11 +119,17 @@ export function Inspector() {
   return (
     <div className="insp">
       <div className="insp-h">
-        <Icon k={nodeKey(n)} />
-        <div>
-          <b>{nodeTitle(n, t)}</b>
-          <small>{t(nodeKey(n) as Key)}</small>
+        <div className="insp-art">
+          <MiniShape kind={nodeKey(n)} tone={sys.kind === 'supply' ? 'sup' : 'exh'} />
         </div>
+        <div className="insp-ttl">
+          <b>{nodeTitle(n, t)}</b>
+          <small>
+            {t(nodeKey(n) as Key)}
+            {run ? ` · ${t(('cat_' + run.cat) as Key)}` : ''}
+          </small>
+        </div>
+        {r?.fid && <span className="chip">ASHRAE {r.fid}</span>}
       </div>
       <div className="insp-b">
         <label className="f wide">
@@ -188,6 +213,12 @@ export function Inspector() {
         {r && (
           <div className="res">
             <div className="sub-h">{t('results')}</div>
+            {r.sec && run && n.type !== 'terminal' && (
+              <div className="gauges">
+                <Gauge label={t('gaugeV')} value={r.sec.v} max={sys.sizing.v[{ main: 0, branch: 1, conn: 2 }[run.cat]]} unit="m/s" lang={lang} />
+                {r.R != null && sys.sizing.method === 'friction' && <Gauge label={t('gaugeR')} value={r.R} max={sys.sizing.Rt} unit="Pa/m" lang={lang} />}
+              </div>
+            )}
             <div className="resl">
               <div>
                 <span>{t('flow')}</span>

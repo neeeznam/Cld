@@ -7,6 +7,9 @@ import { makeT, type Lang, type T } from './i18n';
 
 const LS_PROJ = 'kanalcalc.project.v1';
 const LS_LANG = 'kanalcalc.lang';
+const LS_COLOR = 'kanalcalc.color';
+
+export type ColorMode = 'system' | 'velocity' | 'friction';
 
 function loadLS<X>(key: string): X | null {
   try {
@@ -42,6 +45,8 @@ export interface Store {
   setSi(i: number): void;
   setSel(id: string | null): void;
   setLang(l: Lang): void;
+  color: ColorMode;
+  setColor(c: ColorMode): void;
   /** Izmjena izabranog sistema (kopija + undo); key spaja uzastopne izmjene istog polja. */
   edit(fn: (sys: System, P: Project) => void, key?: string): void;
   /** Izmjena cijelog projekta (kopija + undo). */
@@ -74,6 +79,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sel, setSel] = useState<string | null>(null);
   const [lang, setLangRaw] = useState<Lang>(() => (loadLS<Lang>(LS_LANG) === 'en' ? 'en' : 'sr'));
   const [toast, setToast] = useState<string | null>(null);
+  const [color, setColor] = useState<ColorMode>(() => {
+    const c = loadLS<ColorMode>(LS_COLOR);
+    return c === 'velocity' || c === 'friction' ? c : 'system';
+  });
   const [dialog, setDialog] = useState<Store['dialog']>(null);
   const undoS = useRef<string[]>([]);
   const redoS = useRef<string[]>([]);
@@ -81,6 +90,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => saveLS(LS_PROJ, P), [P]);
   useEffect(() => saveLS(LS_LANG, lang), [lang]);
+  useEffect(() => saveLS(LS_COLOR, color), [color]);
 
   const idx = Math.min(si, P.systems.length - 1);
   const sys = P.systems[idx];
@@ -153,6 +163,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     setSel,
     setLang: setLangRaw,
+    color,
+    setColor,
     edit,
     editProject,
     editNode,
